@@ -1,7 +1,7 @@
 """Night Forest (pilot build): a first-person research prototype in Pygame.
 
-Run on a computer:   python main.py            (or python main.py P03 to set the participant ID)
-Run in a browser:    pygbag .                  (see README.md)
+Run on a computer:   python main.py           
+Run in a browser:    pygbag .                  
 
 main.py is written as an async loop so the same file works with pygbag."""
 import asyncio
@@ -41,14 +41,14 @@ class App:
         self.backdrop = World(self.forest, "none", practice=True)
         self.keys_override = None                         # used by automatic tests
 
-    # ------------------------------------------------------------------ input
+    #  input
     def pressed(self, *keys):
         k = self.keys_override if self.keys_override is not None else pygame.key.get_pressed()
         return any(k[x] for x in keys)
 
     def handle_event(self, e):
         if e.type == pygame.KEYDOWN:
-            if e.key == pygame.K_m:                       # mouse look on/off
+            if e.key == pygame.K_m:                       # mouse look on/off - only works left to right 360 can possibly be added for immersion 
                 self.mouse_look = not self.mouse_look
                 pygame.mouse.set_visible(not self.mouse_look)
                 pygame.event.set_grab(self.mouse_look)
@@ -90,7 +90,7 @@ class App:
             pygame.mouse.set_visible(True)
             pygame.event.set_grab(False)
 
-    # ------------------------------------------------------------------ one frame
+    # one frame
     def update(self, dt):
         self.t += dt
         if self.state == "menu":
