@@ -12,7 +12,7 @@ class World:
         self.f = forest
         self.hud_key = hud_key
         self.flags = C.HUD_MODES[hud_key]
-        self.practice = practice                      # practice: one lantern, no shadow, not recorded
+        self.practice = practice                      # practice: one lantern and a harmless shadow (you cannot lose), not recorded
         lanterns = forest.lanterns[:1] if practice else forest.lanterns
         self.items = [list(l) for l in lanterns]
         self.total = len(self.items)
@@ -20,9 +20,11 @@ class World:
         self.px, self.py = forest.start
         self.pa = 0.0
         self.vf = self.vs = self.vt = 0.0             # smoothed velocities (forward, sideways, turning)
-        self.shadow_on = not practice
+        self.shadow_on = True
         self.shadow_speed = min(C.SHADOW_SPEED, C.WALK_SPEED * C.SHADOW_MAX_RATIO)
         self.sx, self.sy = forest.w - 2.5, forest.h - 2.5
+        if practice:                                  # in practice the shadow starts fairly close, so you meet it quickly
+            self.sx, self.sy = min(forest.w - 2.5, self.px + 7.0), min(forest.h - 2.5, self.py + 5.0)
         self.s_freeze = 0.0
         self.trail = []
         self.health = 100.0
@@ -141,7 +143,7 @@ class World:
                 self.trail.append((self.sx, self.sy))
                 self.trail = self.trail[-9:]
             if d < 0.6 and self.s_freeze <= 0:
-                self.health -= C.SHADOW_DAMAGE
+                self.health = max(40.0 if self.practice else 0.0, self.health - C.SHADOW_DAMAGE)     # practice: the damage shows but you cannot lose
                 self.hits += 1
                 self.flash = self.shake = 1.0
                 self.slow_until = self.t + 1.5
@@ -166,7 +168,7 @@ class World:
         # ending
         if not self.items:
             self.phase, self.result = "won", "completed"
-        elif self.t > C.TIME_LIMIT:
+        elif self.t > (90 if self.practice else C.TIME_LIMIT):
             self.phase, self.result = "lost", "timeUp"
 
     def _far_spot(self):                              # where the shadow reappears: far away, not inside a tree

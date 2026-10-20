@@ -65,13 +65,35 @@ class Audio:
             acc += (raw[i] - acc) * 0.02
             sm.append(acc * (0.6 + 0.4 * math.sin(2 * math.pi * i / L)) * 4.0)
         self.sounds["wind"] = self._snd(sm)
+        # whispers: breathy, wavering noise (loops), used for the "shadow near" cue
+        L = n(3.0)
+        lp1 = lp2 = 0.0
+        wh = []
+        for i in range(L):
+            lp1 += (rnd.uniform(-1, 1) - lp1) * 0.35
+            lp2 += (lp1 - lp2) * 0.35
+            t = i / R
+            wh.append((lp1 - lp2) * 5.0 * (0.5 + 0.5 * math.sin(2 * math.pi * 4.3 * t)) * (0.6 + 0.4 * math.sin(2 * math.pi * 0.67 * t)))
+        self.sounds["whisper"] = self._snd(wh)
         self._wind = None
+        self._whisper = None
 
     def start_ambience(self):
         if self.ok and self._wind is None:
             self._wind = self.sounds["wind"].play(-1)
             if self._wind:
                 self._wind.set_volume(0.18)
+
+    def whisper(self, level, pan=0.0):
+        """level 0..1: how loud the whispers are (0 stops them)."""
+        if not (self.ok and self.enabled):
+            return
+        if self._whisper is None:
+            if level <= 0.01:
+                return
+            self._whisper = self.sounds["whisper"].play(-1)
+        if self._whisper:
+            self._whisper.set_volume(level * (1 - max(0.0, pan)), level * (1 + min(0.0, pan)))
 
     def play(self, name, volume=1.0, pan=0.0):
         """pan: -1 = left ear ... +1 = right ear."""

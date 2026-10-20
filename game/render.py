@@ -34,7 +34,8 @@ class Renderer:
         self.mist = A.mist_panorama(pw, int(H * 0.22))
         self.ground = A.vgradient(W, int(H * 0.62), (26, 46, 46), (3, 7, 8), mid=(0.10, (14, 28, 30)))
         self.vig_dark = A.vignette(W, H, 1.0, (0, 0, 0), 0.38, 1.9)
-        self.vig_red = A.vignette(W, H, 1.0, (180, 0, 12), 0.2, 1.5)
+        self.vig_red = A.vignette(W, H, 1.0, (180, 0, 12), 0.34, 1.7)
+        self.vig_cold = A.vignette(W, H, 1.0, (110, 150, 255), 0.4, 1.8)
         self.grain = A.grain(W * 2, H * 2)
         self.dead = [A.dead_tree(i) for i in range(6)]
         self.pines = [A.pine(i) for i in range(3)]
@@ -227,25 +228,48 @@ class Renderer:
         # world cues that belong to the "built into the world" condition
         self._world_cues(w, now, fov, hy)
 
-        # the held lantern (bottom right): flickers, dims with your light
-        flick = 0.9 + 0.1 * math.sin(now * 13)
-        lit = (0.6 + 0.4 * rng / C.VIEW_RANGE) * flick
+        # the held lantern (bottom right). In the world condition it is also a gauge:
+        #   COLD  = the shadow is near (the flame turns blue and flickers)
+        #   CRACKS = you are hurt (glass cracks, the light dims)
+        cold = w.shadow_close if HUD.has(w, "cold") else 0.0
+        cracks = int((100 - w.health) / 25 + 0.01) if HUD.has(w, "cracks") else 0
+        flick = 0.9 + (0.1 + 0.25 * cold) * math.sin(now * (13 + 22 * cold))
+        lit = (0.6 + 0.4 * rng / C.VIEW_RANGE) * flick * (1 - 0.14 * cracks)
         lx, ly = W - 130 + math.sin(w.bob * 0.5) * 3, H - 74 + abs(math.sin(w.bob)) * 5
-        self._add_glow("orange", int(lx), int(ly), 190 * lit, 0.85)
-        pygame.draw.polygon(cv, (30, 22, 14), [(lx - 18, ly - 18), (lx + 18, ly - 18), (lx + 14, ly - 34), (lx - 14, ly - 34)])
-        pygame.draw.rect(cv, (255, 226, 160), (lx - 15, ly - 16, 30, 42), border_radius=3)
-        pygame.draw.rect(cv, (255, 246, 214), (lx - 8, ly - 10, 16, 28), border_radius=3)
+        self._add_glow("orange", int(lx), int(ly), 190 * lit, 0.85 * (1 - cold))
+        if cold > 0.02:
+            self._add_glow("blue", int(lx), int(ly), 200 * lit, 0.9 * cold)
+        glass = A.lerp((255, 226, 160), (160, 200, 255), cold)
+        core = A.lerp((255, 246, 214), (225, 240, 255), cold)
+        iron = (30, 22, 14)
+        pygame.draw.polygon(cv, iron, [(lx - 18, ly - 18), (lx + 18, ly - 18), (lx + 14, ly - 34), (lx - 14, ly - 34)])
+        pygame.draw.rect(cv, glass, (lx - 15, ly - 16, 30, 42), border_radius=3)
+        pygame.draw.rect(cv, core, (lx - 8, ly - 10, 16, 28), border_radius=3)
         for k in range(3):
-            pygame.draw.line(cv, (30, 22, 14), (lx - 15 + k * 15, ly - 16), (lx - 15 + k * 15, ly + 26), 3)
-        pygame.draw.rect(cv, (30, 22, 14), (lx - 20, ly + 24, 40, 8), border_radius=3)
-        pygame.draw.arc(cv, (30, 22, 14), (lx - 12, ly - 52, 24, 34), 0, math.pi, 4)
+            pygame.draw.line(cv, iron, (lx - 15 + k * 15, ly - 16), (lx - 15 + k * 15, ly + 26), 3)
+        pygame.draw.rect(cv, iron, (lx - 20, ly + 24, 40, 8), border_radius=3)
+        pygame.draw.arc(cv, iron, (lx - 12, ly - 52, 24, 34), 0, math.pi, 4)
+        if cracks >= 1:
+            pygame.draw.lines(cv, (50, 30, 24), False, [(lx - 13, ly - 14), (lx - 3, ly + 2), (lx - 10, ly + 12), (lx - 4, ly + 24)], 2)
+        if cracks >= 2:
+            pygame.draw.lines(cv, (50, 30, 24), False, [(lx + 12, ly - 14), (lx + 3, ly), (lx + 11, ly + 10), (lx + 5, ly + 24)], 2)
+            pygame.draw.polygon(cv, (10, 8, 6), [(lx + 15, ly - 16), (lx + 15, ly - 4), (lx + 6, ly - 16)])          # a chip of glass is missing
+        if cracks >= 3:
+            for dx, dy in ((-12, 6), (10, 8), (0, -4)):
+                pygame.draw.line(cv, (50, 30, 24), (lx, ly + 4), (lx + dx, ly + dy + 10), 2)
+            pygame.draw.polygon(cv, (10, 8, 6), [(lx - 15, ly + 10), (lx - 15, ly + 26), (lx - 4, ly + 26)])
 
     def _world_cues(self, w, now, fov, hy):
         W, H, cv = self.W, self.H, self.canvas
-        if HUD.has(w, "vignette"):                  # red mist: more when hurt, more when the shadow is close, pulses with the heartbeat
-            a = min(0.9, (1 - w.health / 100) * 0.75 + w.shadow_close * 0.3 + w.beat * 0.22)
-            self.vig_red.set_alpha(int(255 * a))
-            cv.blit(self.vig_red, (0, 0))
+        if HUD.has(w, "blood"):                     # RED mist = you are hurt (it only depends on your health, not on the shadow)
+            a = min(0.9, (1 - w.health / 100) * 1.0)
+            if a > 0.02:
+                self.vig_red.set_alpha(int(255 * a))
+                cv.blit(self.vig_red, (0, 0))
+        if HUD.has(w, "cold") and w.shadow_close > 0.03:   # BLUE frost = the shadow is near (it only depends on distance), pulsing with the heartbeat
+            a = min(0.9, w.shadow_close ** 1.1 * 0.8 + w.beat * 0.15 * w.shadow_close)
+            self.vig_cold.set_alpha(int(255 * a))
+            cv.blit(self.vig_cold, (0, 0))
         if HUD.has(w, "orbs"):                      # one light beside your lantern for each lantern found
             for i in range(w.found):
                 ox = W - 130 + math.cos(i * 0.9 - 1.3) * 66

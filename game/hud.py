@@ -6,9 +6,11 @@ The two non-empty conditions give the SAME information in different ways:
    Progress                     count (counter)           orbs (found lanterns glow beside your lantern)
    Direction to nearest goal    compass (arrow)           wisp (a blue firefly drifts towards it)
    Where everything is          map (mini-map)            beacon (lanterns glow through the dark, with a shaft of light)
-   Health                       health (bar)              vignette (red mist at the screen edges)
-   Danger                       warn (warning panel)      ping (heartbeat that speeds up near the shadow)
-   Which side the shadow is on  map (red dot)             pan (the heartbeat comes from that ear: use headphones)
+   Health (damage)              health (bar)              blood (red mist) + cracks (your lantern cracks and dims)
+   Danger (shadow near)         warn (warning panel)      cold (blue frost and a cold blue flame) + ping (heartbeat)
+   Which side the shadow is on  map (red dot)             pan (the heartbeat and whispers come from that ear)
+
+   Two separate channels in the world version: RED + CRACKS = you are hurt. BLUE + HEARTBEAT = the shadow is close.
 
 NOTE: the map shows more than the world cues do. Describe the conditions as packages in your report.
 Conditions are lists of these feature names in config.py."""
@@ -17,7 +19,6 @@ import pygame
 from . import config as C
 
 LEGEND = {
-    "none": ["Nothing is shown. Find the lanterns by exploring."],
     "full": ["Counter (top left): lanterns found out of the total.",
              "Health bar (under the counter).",
              "Compass arrow (top centre): points to the nearest lantern.",
@@ -26,8 +27,8 @@ LEGEND = {
     "world": ["Small lights beside your lantern: one for each lantern found.",
               "A glowing blue wisp floats towards the nearest lantern. Follow it.",
               "Lanterns glow through the dark from far away, with a shaft of light.",
-              "Red mist at the screen edges: you are hurt, or the shadow is close.",
-              "A heartbeat gets faster when the shadow is near and comes from the side it is on."],
+              "SHADOW NEAR: your flame turns cold blue, frost creeps in at the edges, whispers and a heartbeat grow (from its side).",
+              "HURT: red mist at the edges, and your lantern cracks and dims. Red = damage. Blue = the shadow is close."],
 }
 
 

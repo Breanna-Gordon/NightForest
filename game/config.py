@@ -43,10 +43,9 @@ FOV = 1.15                      # field of view (radians)
 # --- data logging: one row per recorded round is added to data/rounds.csv
 LOG_ROUNDS = True
 
-# --- HUD conditions. Each is a list of features (see hud.py). The player picks one in the menu.
+# --- HUD conditions. Each is a list of features (see hud.py). The researcher picks one in the menu.
 HUD_MODES = {
-    "none":  [],
     "full":  ["count", "compass", "health", "warn", "map"],
-    "world": ["orbs", "wisp", "beacon", "vignette", "ping", "pan"],
+    "world": ["orbs", "wisp", "beacon", "blood", "cracks", "cold", "ping", "pan"],
 }
-HUD_LABELS = {"none": "No HUD", "full": "Full on-screen HUD", "world": "Built into the world"}
+HUD_LABELS = {"full": "Full on-screen HUD", "world": "Built into the world (diegetic)"}

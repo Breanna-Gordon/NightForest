@@ -1,7 +1,7 @@
 """Night Forest (pilot build): a first-person research prototype in Pygame.
 
-Run on a computer:   python main.py           
-Run in a browser:    pygbag .                  
+Run on a computer:   python main.py            (or python main.py P03 to set the participant ID)
+Run in a browser:    pygbag .                  (see README.md)
 
 main.py is written as an async loop so the same file works with pygbag."""
 import asyncio
@@ -19,7 +19,7 @@ from game.mapgen import build_forest
 from game.render import Renderer
 from game.world import World
 
-MODES = ["none", "full", "world"]
+MODES = ["full", "world"]
 
 
 class App:
@@ -38,17 +38,18 @@ class App:
         self.mouse_look = False
         self.started = ""
         self.t = 0.0
-        self.backdrop = World(self.forest, "none", practice=True)
+        self.backdrop = World(self.forest, "full", practice=True)
+        self.backdrop.shadow_on = False                   # a calm backdrop for the menu
         self.keys_override = None                         # used by automatic tests
 
-    #  input
+    # ------------------------------------------------------------------ input
     def pressed(self, *keys):
         k = self.keys_override if self.keys_override is not None else pygame.key.get_pressed()
         return any(k[x] for x in keys)
 
     def handle_event(self, e):
         if e.type == pygame.KEYDOWN:
-            if e.key == pygame.K_m:                       # mouse look on/off - only works left to right 360 can possibly be added for immersion 
+            if e.key == pygame.K_m:                       # mouse look on/off
                 self.mouse_look = not self.mouse_look
                 pygame.mouse.set_visible(not self.mouse_look)
                 pygame.event.set_grab(self.mouse_look)
@@ -57,10 +58,10 @@ class App:
                 self.audio.toggle()
             elif self.state == "menu":
                 if e.key in (pygame.K_UP, pygame.K_w):
-                    self.sel = (self.sel - 1) % 3
+                    self.sel = (self.sel - 1) % len(MODES)
                 elif e.key in (pygame.K_DOWN, pygame.K_s):
-                    self.sel = (self.sel + 1) % 3
-                elif e.key in (pygame.K_1, pygame.K_2, pygame.K_3):
+                    self.sel = (self.sel + 1) % len(MODES)
+                elif e.key in (pygame.K_1, pygame.K_2):
                     self.sel = e.key - pygame.K_1
                 elif e.key in (pygame.K_RETURN, pygame.K_SPACE):
                     self.start(False)
@@ -85,14 +86,17 @@ class App:
 
     def back_to_menu(self):
         self.state = "menu"
+        self.audio.whisper(0.0)
         if self.mouse_look:
             self.mouse_look = False
             pygame.mouse.set_visible(True)
             pygame.event.set_grab(False)
 
-    # one frame
+    # ------------------------------------------------------------------ one frame
     def update(self, dt):
         self.t += dt
+        if self.state == "end":
+            self.audio.whisper(0.0)
         if self.state == "menu":
             self.backdrop.pa = self.t * 0.12
             self.backdrop.bob += dt * 0.8
@@ -109,6 +113,7 @@ class App:
             for name, vol, pan in w.events:
                 self.audio.play(name, vol, pan)
             w.events.clear()
+            self.audio.whisper(w.shadow_close ** 1.4 * 0.55 if "cold" in w.flags else 0.0, math.sin(math.atan2(w.sy - w.py, w.sx - w.px) - w.pa) if "pan" in w.flags else 0.0)
             if w.phase != "play":
                 self.state = "end"
                 if not self.practice:
@@ -135,11 +140,21 @@ class App:
                     pygame.draw.rect(s, (255, 169, 77), rect, 2, border_radius=8)
                 HUD.text(s, F["m"], f"{i + 1}   {C.HUD_LABELS[m]}", (rect.x + 20, rect.y + 11), (255, 214, 160) if i == self.sel else (200, 205, 220))
                 y += 52
-            HUD.panel(s, pygame.Rect(W // 2 - 330, y + 2, 660, 142), 150)
-            HUD.text(s, F["s"], "What you will see in this condition:", (W // 2 - 314, y + 16), (150, 165, 195), shadow=False)
-            for k, line in enumerate(HUD.LEGEND[MODES[self.sel]]):
-                HUD.text(s, F["s"], "- " + line, (W // 2 - 314, y + 42 + k * 21), (220, 225, 238), shadow=False)
-            HUD.text(s, F["s"], "Up/Down or 1-3: choose     Enter: start recorded round     P: practice (one lantern, no shadow, not recorded)", (W // 2, H - 58), (150, 165, 195), "midtop", False)
+            lines = []                                                # the key for this condition, wrapped to fit the panel
+            for line in HUD.LEGEND[MODES[self.sel]]:
+                words, cur = ("- " + line).split(" "), ""
+                for wd in words:
+                    if F["s"].size((cur + " " + wd).strip())[0] > 620 and cur:
+                        lines.append(cur)
+                        cur = "   " + wd
+                    else:
+                        cur = (cur + " " + wd).strip() if cur else wd
+                lines.append(cur)
+            HUD.panel(s, pygame.Rect(W // 2 - 330, y + 2, 660, 42 + 21 * len(lines)), 150)
+            HUD.text(s, F["s"], "What you will see in this condition:", (W // 2 - 314, y + 14), (150, 165, 195), shadow=False)
+            for k, line in enumerate(lines):
+                HUD.text(s, F["s"], line, (W // 2 - 314, y + 38 + k * 21), (220, 225, 238), shadow=False)
+            HUD.text(s, F["s"], "Up/Down or 1-2: choose     Enter: start recorded round     P: practice (one lantern, a harmless shadow, not recorded)", (W // 2, H - 58), (150, 165, 195), "midtop", False)
             HUD.text(s, F["s"], "W/S walk   A/D turn   Q/E sidestep   Shift sprint   M mouse look   O sound on/off   Esc back", (W // 2, H - 34), (150, 165, 195), "midtop", False)
         else:
             w = self.world
