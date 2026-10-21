@@ -364,3 +364,107 @@ def grass_tuft(seed, w=90, h=64):
     return shrink(s, w, h)
 
 
+
+
+# ---------------------------------------------------------------- landmarks (one per glade; they help you find your way)
+def _halo(s, cx, cy, rad, col, strength):
+    for r in range(int(rad), 0, -SS):
+        pygame.draw.circle(s, (col[0], col[1], col[2], int(strength * (1 - r / rad) ** 1.6)), (int(cx), int(cy)), r)
+
+
+def shrine(w=260, h=340):
+    """A broken stone arch with a softly glowing blue rune."""
+    W, H = w * SS, h * SS
+    s = surf(W, H)
+    stone, dark, lite = (86, 94, 112), (48, 54, 70), (128, 140, 166)
+    cx, cy = W / 2, H * 0.56
+    _halo(s, cx, cy, W * 0.34, (110, 220, 255), 90)
+    pygame.draw.rect(s, dark, (W * 0.06, H * 0.9, W * 0.88, H * 0.07))
+    for x0 in (W * 0.13, W * 0.75):
+        pygame.draw.rect(s, stone, (x0, H * 0.22, W * 0.12, H * 0.69))
+        pygame.draw.line(s, lite, (x0 + 2 * SS, H * 0.22), (x0 + 2 * SS, H * 0.9), 2 * SS)
+        pygame.draw.rect(s, dark, (x0 - W * 0.02, H * 0.2, W * 0.16, H * 0.05))
+    lintel = [(W * 0.1, H * 0.2), (W * 0.9, H * 0.2), (W * 0.9, H * 0.12), (W * 0.62, H * 0.1), (W * 0.54, H * 0.17), (W * 0.42, H * 0.07), (W * 0.1, H * 0.12)]
+    pygame.draw.polygon(s, stone, lintel)
+    pygame.draw.polygon(s, dark, lintel, 2 * SS)
+    pygame.draw.circle(s, (190, 248, 255), (int(cx), int(cy)), int(W * 0.1), 3 * SS)
+    pygame.draw.line(s, (190, 248, 255), (cx, cy - W * 0.16), (cx, cy + W * 0.16), 3 * SS)
+    pygame.draw.line(s, (190, 248, 255), (cx - W * 0.1, cy + W * 0.04), (cx + W * 0.1, cy - W * 0.04), 3 * SS)
+    for k in range(9):
+        gx = W * 0.06 + k * W * 0.1
+        pygame.draw.line(s, (36, 64, 54), (gx, H * 0.93), (gx + (k % 3 - 1) * 5 * SS, H * 0.8), 2 * SS)
+    return shrink(s, w, h)
+
+
+def stones(w=330, h=240):
+    """A row of tall standing stones with warm amber marks."""
+    W, H = w * SS, h * SS
+    s = surf(W, H)
+    rnd = random.Random(5)
+    for i, (xc, hh, ww) in enumerate(((0.12, 0.62, 0.1), (0.3, 0.84, 0.12), (0.5, 0.95, 0.13), (0.7, 0.8, 0.12), (0.88, 0.58, 0.1))):
+        x, top, bw = W * xc, H * (1 - hh), W * ww
+        pts = [(x - bw / 2, H * 0.93), (x - bw / 2 * 0.9, top + H * 0.06), (x - bw * 0.15, top), (x + bw * 0.35, top + H * 0.03), (x + bw / 2, top + H * 0.09), (x + bw / 2, H * 0.93)]
+        _halo(s, x, top + (H * 0.93 - top) * 0.35, bw * 1.6, (255, 170, 80), 55)
+        pygame.draw.polygon(s, (74, 80, 98), pts)
+        pygame.draw.polygon(s, (44, 48, 62), pts, 2 * SS)
+        pygame.draw.line(s, (120, 130, 156), (x - bw / 2 + 2 * SS, H * 0.93), (x - bw / 2 * 0.9 + 2 * SS, top + H * 0.07), 2 * SS)
+        my = top + (H * 0.93 - top) * 0.3
+        for j in range(3):
+            pygame.draw.line(s, (255, 200, 120), (x - 6 * SS, my + j * 12 * SS), (x + 6 * SS, my + j * 12 * SS + rnd.uniform(-3, 3) * SS), 2 * SS)
+    pygame.draw.rect(s, (30, 44, 40), (0, H * 0.92, W, H * 0.08))
+    return shrink(s, w, h)
+
+
+def mushroom_ring(w=340, h=130):
+    """A ring of glowing mushrooms in the grass."""
+    W, H = w * SS, h * SS
+    s = surf(W, H)
+    rnd = random.Random(9)
+    _halo(s, W / 2, H * 0.72, W * 0.5, (110, 240, 170), 38)
+    for i in range(15):
+        a = i / 15 * 6.283
+        x = W / 2 + math.cos(a) * W * 0.42
+        base = H * 0.72 + math.sin(a) * H * 0.2
+        sz = 0.65 + 0.35 * (math.sin(a) + 1) / 2 + rnd.uniform(-0.1, 0.1)
+        _halo(s, x, base - 14 * SS * sz, 26 * SS * sz, (120, 240, 170), 90)
+        pygame.draw.rect(s, (205, 225, 200), (x - 3 * SS * sz, base - 20 * SS * sz, 6 * SS * sz, 20 * SS * sz))
+        pygame.draw.ellipse(s, (130, 235, 170), (x - 13 * SS * sz, base - 32 * SS * sz, 26 * SS * sz, 17 * SS * sz))
+        pygame.draw.ellipse(s, (215, 255, 228), (x - 5 * SS * sz, base - 29 * SS * sz, 8 * SS * sz, 5 * SS * sz))
+    return shrink(s, w, h)
+
+
+def fallen_log(seed, w=240, h=80):
+    rnd = random.Random(seed)
+    W, H = w * SS, h * SS
+    s = surf(W, H)
+    y = H * 0.62
+    body = [(W * 0.04, y + H * 0.2), (W * 0.06, y - H * 0.16), (W * 0.5, y - H * 0.22), (W * 0.94, y - H * 0.14), (W * 0.97, y + H * 0.2)]
+    pygame.draw.polygon(s, (52, 40, 34), body)
+    pygame.draw.polygon(s, (30, 24, 22), body, 2 * SS)
+    pygame.draw.ellipse(s, (88, 70, 56), (W * 0.9, y - H * 0.16, W * 0.1, H * 0.36))             # the cut end
+    pygame.draw.ellipse(s, (60, 46, 38), (W * 0.93, y - H * 0.08, W * 0.04, H * 0.2))
+    for _ in range(10):
+        x = rnd.uniform(W * 0.1, W * 0.85)
+        pygame.draw.line(s, (36, 28, 24), (x, y - H * 0.18), (x + rnd.uniform(-8, 8) * SS, y + H * 0.14), SS)
+    for _ in range(9):
+        pygame.draw.circle(s, (52, 84, 66), (int(rnd.uniform(W * 0.1, W * 0.8)), int(y - H * 0.2 + rnd.uniform(0, 8) * SS)), rnd.randint(5, 11) * SS)
+    for k in range(10):
+        gx = W * 0.05 + k * W * 0.095
+        pygame.draw.line(s, (36, 64, 54), (gx, y + H * 0.22), (gx + rnd.uniform(-5, 5) * SS, y + H * 0.02), 2 * SS)
+    return shrink(s, w, h)
+
+
+def stump(seed, w=120, h=110):
+    rnd = random.Random(seed)
+    W, H = w * SS, h * SS
+    s = surf(W, H)
+    pts = [(W * 0.18, H * 0.95), (W * 0.26, H * 0.4), (W * 0.22, H * 0.22), (W * 0.4, H * 0.3), (W * 0.52, H * 0.12), (W * 0.66, H * 0.3), (W * 0.78, H * 0.24), (W * 0.76, H * 0.45), (W * 0.84, H * 0.95)]
+    pygame.draw.polygon(s, (48, 38, 34), pts)
+    pygame.draw.polygon(s, (28, 22, 20), pts, 2 * SS)
+    pygame.draw.line(s, (92, 78, 70), (W * 0.27, H * 0.9), (W * 0.31, H * 0.4), 2 * SS)
+    for _ in range(5):
+        pygame.draw.circle(s, (52, 84, 66), (int(rnd.uniform(W * 0.25, W * 0.75)), int(rnd.uniform(H * 0.55, H * 0.9))), rnd.randint(5, 10) * SS)
+    for k in range(7):
+        gx = W * 0.1 + k * W * 0.12
+        pygame.draw.line(s, (36, 64, 54), (gx, H * 0.97), (gx + rnd.uniform(-5, 5) * SS, H * 0.8), 2 * SS)
+    return shrink(s, w, h)

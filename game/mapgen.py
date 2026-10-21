@@ -26,8 +26,10 @@ class Prop:
 
 
 class Forest:
-    def __init__(self, w, h, trees, lanterns, props, start, grass=()):
+    def __init__(self, w, h, trees, lanterns, props, start, grass=(), glades=(), ponds=()):
         self.w, self.h, self.trees, self.lanterns, self.props, self.start = w, h, trees, lanterns, props, start
+        self.ponds = list(ponds)                          # (x, y, radius): still pools of water (scenery, you can wade through)
+        self.glades = list(glades)                        # (x, y, kind): clearings, each with one landmark
         self.grass = list(grass)                          # ground cover: tufts of dead grass
         self._cells = {}                                  # grid of trees for fast collision tests
         for t in trees:
@@ -84,11 +86,23 @@ def build_forest(cfg, seed=None, attempt=0):
     for t in trees:
         grid.setdefault((int(t.x), int(t.y)), []).append(t)
 
+    glades, gl = [], random.Random(seed + 31)             # clearings with a landmark each. Own random stream, so trees elsewhere are unaffected.
+    for _ in range(600):
+        if len(glades) >= cfg.get("glades", 3):
+            break
+        gx, gy = 6 + gl.random() * (w - 12), 6 + gl.random() * (h - 12)
+        if math.hypot(gx - start[0], gy - start[1]) < 12 or any(math.hypot(gx - a, gy - b) < 12 for a, b, _ in glades):
+            continue
+        glades.append((gx, gy, ("shrine", "stones", "ring")[len(glades) % 3]))
+    gr = cfg.get("glade_radius", 3.3)
+
     tries = 0
     while len(trees) - ring < cfg["max_trees"] and tries < 30000:
         tries += 1
         x, y = 1.5 + rnd.random() * (w - 3), 1.5 + rnd.random() * (h - 3)
         if math.hypot(x - start[0], y - start[1]) < cfg["clear_radius"]:
+            continue
+        if any(math.hypot(x - a, y - b) < gr for a, b, _ in glades):
             continue
         gap = cfg["spacing_open"] + (cfg["spacing_dense"] - cfg["spacing_open"]) * density(x, y)
         if all(math.hypot(t.x - x, t.y - y) >= gap for t in near(x, y, gap)):
@@ -105,6 +119,8 @@ def build_forest(cfg, seed=None, attempt=0):
         if math.hypot(x - start[0], y - start[1]) < cfg["min_start_distance"]:
             continue
         if any(math.hypot(t.x - x, t.y - y) < t.r + 0.8 for t in near(x, y, 2)):
+            continue
+        if any(math.hypot(x - a, y - b) < 2.4 for a, b, _ in glades):
             continue
         if any(math.hypot(lx - x, ly - y) < cfg["min_spacing"] for lx, ly in lanterns):
             continue
@@ -127,7 +143,9 @@ def build_forest(cfg, seed=None, attempt=0):
             continue
         if any(math.hypot(lx - x, ly - y) < 1.2 for lx, ly in lanterns):
             continue
-        props.append(Prop(x, y, dec.random(), "grave" if k < 0.3 else "rock" if k < 0.7 else "mush"))
+        if any(math.hypot(x - a, y - b) < 1.8 for a, b, _ in glades):
+            continue
+        props.append(Prop(x, y, dec.random(), "grave" if k < 0.22 else "rock" if k < 0.5 else "mush" if k < 0.72 else "log" if k < 0.88 else "stump"))
 
     grass = []                                            # dense dead grass, so the ground has texture and a sense of movement
     for _ in range(int(w * h * 3.2)):
@@ -135,4 +153,19 @@ def build_forest(cfg, seed=None, attempt=0):
         if any(math.hypot(t.x - x, t.y - y) < t.r + 0.1 for t in near(x, y, 1)):
             continue
         grass.append(Prop(x, y, dec.random(), "grass"))
-    return Forest(w, h, trees, lanterns, props, start, grass)
+    ponds, pr = [], random.Random(seed + 57)               # scenery only: pools placed where no tree stands, so trees and lanterns are unchanged
+    for _ in range(3000):
+        if len(ponds) >= cfg.get("ponds", 3):
+            break
+        x, y, rad = 4 + pr.random() * (w - 8), 4 + pr.random() * (h - 8), 1.0 + pr.random() * 0.7
+        if math.hypot(x - start[0], y - start[1]) < 5 or any(math.hypot(x - a, y - b) < 4.5 for a, b, _ in glades):
+            continue
+        if any(math.hypot(x - a, y - b) < 5 for a, b, _ in ponds) or any(math.hypot(lx - x, ly - y) < rad + 1.5 for lx, ly in lanterns):
+            continue
+        if any(math.hypot(t.x - x, t.y - y) < rad + 0.7 for t in near(x, y, 3)):
+            continue
+        ponds.append((x, y, rad))
+    props = [p for p in props if not any(math.hypot(p.x - a, p.y - b) < r + 0.5 for a, b, r in ponds)]
+    for a, b, kind in glades:
+        props.append(Prop(a, b, 0.5, kind))                # the landmark stands in the middle of its glade
+    return Forest(w, h, trees, lanterns, props, start, grass, glades, ponds)

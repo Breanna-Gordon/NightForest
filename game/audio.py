@@ -75,6 +75,29 @@ class Audio:
             t = i / R
             wh.append((lp1 - lp2) * 5.0 * (0.5 + 0.5 * math.sin(2 * math.pi * 4.3 * t)) * (0.6 + 0.4 * math.sin(2 * math.pi * 0.67 * t)))
         self.sounds["whisper"] = self._snd(wh)
+        # a different bell for each lantern (pentatonic, rising), and a bright chord when the last is found
+        for k, f0 in enumerate((523.25, 587.33, 659.25, 783.99, 880.0, 1046.5), 1):
+            self.sounds["chime%d" % k] = self._snd([(math.sin(2 * math.pi * f0 * i / R) * 0.5 + math.sin(2 * math.pi * f0 * 2.01 * i / R) * 0.25 + math.sin(2 * math.pi * f0 * 3.0 * i / R) * 0.1) * math.exp(-i / R * 3.2) * 0.5 for i in range(n(1.4))])
+        fin = [0.0] * n(2.6)
+        for j, f0 in enumerate((523.25, 659.25, 783.99, 1046.5)):
+            for i in range(n(2.0)):
+                fin[i + n(0.18 * j)] += math.sin(2 * math.pi * f0 * i / R) * math.exp(-i / R * 1.8) * 0.22
+        self.sounds["finale"] = self._snd(fin)
+        # ambience: an owl, a creaking branch, a distant snap
+        owl = []
+        for i in range(n(1.3)):
+            t = i / R
+            env = (math.exp(-((t - 0.25) / 0.12) ** 2) + 0.8 * math.exp(-((t - 0.7) / 0.18) ** 2))
+            owl.append(math.sin(2 * math.pi * (330 - 45 * t) * t + 3 * math.sin(2 * math.pi * 5 * t)) * env * 0.5)
+        self.sounds["owl"] = self._snd(owl)
+        lp, creak = 0.0, []
+        for i in range(n(1.1)):
+            t = i / R
+            lp += (rnd.uniform(-1, 1) - lp) * 0.08
+            creak.append((lp * 3.0 * (0.5 + 0.5 * math.sin(2 * math.pi * (14 + 10 * t) * t))) * math.sin(math.pi * t / 1.1) * 0.5)
+        self.sounds["creak"] = self._snd(creak)
+        self.sounds["snap"] = self._snd([rnd.uniform(-1, 1) * math.exp(-i / R * 45) * 0.5 for i in range(n(0.25))])
+        self._amb_t = 8.0
         self._wind = None
         self._whisper = None
 
@@ -94,6 +117,13 @@ class Audio:
             self._whisper = self.sounds["whisper"].play(-1)
         if self._whisper:
             self._whisper.set_volume(level * (1 - max(0.0, pan)), level * (1 + min(0.0, pan)))
+
+    def ambient(self, dt):
+        """Occasional distant sounds (an owl, a creaking branch, a snap) from a random side."""
+        self._amb_t -= dt
+        if self._amb_t <= 0:
+            self._amb_t = random.uniform(7.0, 16.0)
+            self.play(random.choice(("owl", "creak", "snap", "owl")), random.uniform(0.12, 0.3), random.uniform(-1, 1))
 
     def play(self, name, volume=1.0, pan=0.0):
         """pan: -1 = left ear ... +1 = right ear."""

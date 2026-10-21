@@ -8,8 +8,8 @@ import sys
 import json
 import time
 
-COLUMNS = ["participant", "build", "hudCondition", "startedAt", "durationSec", "result", "lanternsFound", "lanternsTotal",
-           "distance", "pauses", "tilesVisited", "hits", "sprintSec", "exhaustions"]
+COLUMNS = ["participant", "build", "round", "order", "hudCondition", "map", "startedAt", "durationSec", "result", "lanternsFound",
+           "lanternsTotal", "firstLanternSec", "distance", "pauses", "tilesVisited", "hits", "shadowCloseSec", "sprintSec", "exhaustions"]
 WEB = sys.platform == "emscripten"
 
 
